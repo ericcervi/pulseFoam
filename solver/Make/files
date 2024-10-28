@@ -1,0 +1,3 @@
+pulseFoam.C
+
+EXE = $(FOAM_APPBIN)/pulseFoam
