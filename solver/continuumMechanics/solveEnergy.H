@@ -6,6 +6,14 @@
     );
 
     e = rhoE/rho - 0.5*magSqr(U);
+
+    /*forAll(e, cellI)
+    {
+        if (e[cellI] <= 0.0)
+        {
+            e[cellI] = 1e-9;
+        }
+    }*/
     e.correctBoundaryConditions();
 
     T = e/Cv;

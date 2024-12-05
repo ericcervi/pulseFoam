@@ -7,9 +7,9 @@
 
             forAll(alpha_m[mI], cellI)
             {
-                if (alpha_m[mI][cellI] <= 0.0)
+                if (alpha_m[mI][cellI] < 0.0)
                 {
-                    alpha_m[mI][cellI] = 1.0e-6;
+                 //   alpha_m[mI][cellI] = 1.0e-6;
                 }
             }
             alpha_m[mI].correctBoundaryConditions();

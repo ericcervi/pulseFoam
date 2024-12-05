@@ -283,8 +283,16 @@ for (int mI=0; mI<materials; mI++)
         B0 +=  alpha_m[mI] * (rho0_m[mI] - beta_m[mI]*(T - T0) - psi_m[mI]*p0);
     }
 }
+
+forAll(psi, cellI)
+{
+    if (psi[cellI] <= 0.0)
+    {
+        psi[cellI] = 1e-9;
+    }
+}
 psi.correctBoundaryConditions();
-B0.correctBoundaryConditions();  
+B0.correctBoundaryConditions();
 
 volVectorField rhoU
 (
