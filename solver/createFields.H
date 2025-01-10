@@ -14,6 +14,9 @@ IOdictionary materialProperties
     )
 );
 
+Foam::dimensionedVector gravity = materialProperties.lookupOrDefault<Foam::dimensionedVector>(
+    "gravity", Foam::dimensionedVector("gravity", Foam::dimensionSet(0, 1, -2, 0, 0, 0, 0), Foam::vector(0.0, 0.0, 0.0)));
+
 std::vector<int> EOS_m{};
 std::vector<dimensionedScalar> R_m{};
 std::vector<dimensionedScalar> beta_m{};
@@ -27,17 +30,8 @@ for (int mI=0; mI<materials; mI++)
     scalar EOS_value = materialProperties.lookupOrDefault<scalar>("EOS_m" + Foam::name(mI), 0.0);
     EOS_m.push_back(EOS_value);
 
-    if (EOS_value == 0)
-    { 
-     	dimensionedScalar R_value(materialProperties.lookup("R_m" + Foam::name(mI)));
-        R_m.push_back(R_value);
-    }
-    else
-    {
-        dimensionSet R_dim(0,2,-2,-1,0,0,0);
-        dimensionedScalar R("R", R_dim, 0.0);
-        R_m.push_back(R);
-    }
+    dimensionedScalar R_value(materialProperties.lookup("R_m" + Foam::name(mI)));
+    R_m.push_back(R_value);
 
     if (EOS_value == 1)
     {
@@ -127,6 +121,19 @@ volScalarField rho
     IOobject
     (
         "rho",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    alpha_m[0]*rho_m[0]*0.0
+);
+
+volScalarField cavitated
+(
+    IOobject
+    (
+        "cavitated",
         runTime.timeName(),
         mesh,
         IOobject::READ_IF_PRESENT,

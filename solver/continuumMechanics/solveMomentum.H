@@ -1,5 +1,5 @@
 {
-    solve(fvm::ddt(rhoU) + fvc::div(phiUp));
+    solve(fvm::ddt(rhoU) + fvc::div(phiUp) - rho * gravity);
 
     U.ref() = rhoU()/rho();
     U.correctBoundaryConditions();
