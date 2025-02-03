@@ -17,7 +17,7 @@
 
     forAll(B0, cellI)
     {
-        if (rho[cellI] < B0[cellI])
+        if ((rho[cellI] - B0[cellI]) / psi[cellI] < -30e6)
         {
             psi[cellI] *= 0.0;
             for (int mI=0; mI<materials; mI++) 
