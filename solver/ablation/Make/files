@@ -1,0 +1,5 @@
+FaceShading/FaceShading.C
+HeatDeposition/HeatDepositionTable.C
+FlashBoilingModel/FlashBoilingModel.C
+
+LIB = $(FOAM_USER_LIBBIN)/libAblationMultiMaterial
