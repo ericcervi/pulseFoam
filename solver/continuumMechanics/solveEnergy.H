@@ -3,6 +3,7 @@
     (
         fvm::ddt(rhoE)
       + fvc::div(phiEp)
+      - powDens
     );
 
     e = rhoE/rho - 0.5*magSqr(U);

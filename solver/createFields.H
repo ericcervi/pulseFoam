@@ -25,6 +25,8 @@ std::vector<dimensionedScalar> Cv_m{};
 std::vector<dimensionedScalar> Cp_m{};
 std::vector<dimensionedScalar> rho0_m{};
 
+scalar void_limit = materialProperties.lookupOrDefault<scalar>("void_limit", 0.0);
+
 for (int mI=0; mI<materials; mI++) 
 {
     scalar EOS_value = materialProperties.lookupOrDefault<scalar>("EOS_m" + Foam::name(mI), 0.0);
@@ -127,6 +129,20 @@ volScalarField rho
         IOobject::AUTO_WRITE
     ),
     alpha_m[0]*rho_m[0]*0.0
+);
+
+volScalarField powDens
+(
+    IOobject
+    (
+        "powDens",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("powDens",dimensionSet(1,-1,-3,0,0,0,0),0)
 );
 
 volScalarField cavitated
