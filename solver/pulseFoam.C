@@ -216,9 +216,7 @@ int main(int argc, char *argv[])
         }
 
         Info << nl << "Mass = " << fvc::domainIntegrate(rho).value() << " kg" << endl;
-        Info << nl << "Enthalpy = " << fvc::domainIntegrate(rho*Cv*T + p).value() << " kg" << endl;
-        Info << nl << "Total Enthalpy = " << fvc::domainIntegrate(rho*Cv*T + p + 0.5*rho*(U&U)).value() << " kg" << endl;
-        Info << nl << "Internal energy = " << fvc::domainIntegrate(rho*Cv*T + 0.5*rho*(U&U)).value() << " kg" << endl;
+        Info << nl << "Internal energy = " << fvc::domainIntegrate(rho*Cv*T + 0.5*rho*(U&U)).value() << " J" << endl;
 
         runTime.write();
 

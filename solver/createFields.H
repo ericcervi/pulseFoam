@@ -26,6 +26,7 @@ std::vector<dimensionedScalar> Cp_m{};
 std::vector<dimensionedScalar> rho0_m{};
 
 scalar void_limit = materialProperties.lookupOrDefault<scalar>("void_limit", 0.0);
+scalar p_cavitation = materialProperties.lookupOrDefault<scalar>("p_cavitation", -1.0e30);
 
 for (int mI=0; mI<materials; mI++) 
 {
@@ -496,7 +497,7 @@ forAll(phi_m, mI)
 surfaceScalarField phi("phi", fvc::flux(rhoU));
 
 scalar eulRel = runTime.controlDict().lookupOrDefault<scalar>("eulRel", 0);
-scalar externalCycles = runTime.controlDict().lookupOrDefault<scalar>("externalCycles", 4);
+scalar externalCycles = runTime.controlDict().lookupOrDefault<scalar>("externalCycles", 1);
 
 
 volScalarField eulerian
