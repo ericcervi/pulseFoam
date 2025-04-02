@@ -24,9 +24,12 @@ std::vector<dimensionedScalar> psi_m{};
 std::vector<dimensionedScalar> Cv_m{};
 std::vector<dimensionedScalar> Cp_m{};
 std::vector<dimensionedScalar> rho0_m{};
+std::vector<dimensionedScalar> nu_m{};
 
-scalar void_limit = materialProperties.lookupOrDefault<scalar>("void_limit", 0.0);
+scalar void_limit = materialProperties.lookupOrDefault<scalar>("void_limit", -1.0);
 scalar p_cavitation = materialProperties.lookupOrDefault<scalar>("p_cavitation", -1.0e30);
+bool boiling = materialProperties.lookupOrDefault<bool>("boiling", false);
+int cavitating_id = materialProperties.lookupOrDefault<scalar>("cavitating_id", 1000);
 
 for (int mI=0; mI<materials; mI++) 
 {
@@ -35,6 +38,9 @@ for (int mI=0; mI<materials; mI++)
 
     dimensionedScalar R_value(materialProperties.lookup("R_m" + Foam::name(mI)));
     R_m.push_back(R_value);
+
+    dimensionedScalar nu_value(materialProperties.lookup("nu_m" + Foam::name(mI), 0.0));
+    nu_m.push_back(nu_value);
 
     if (EOS_value == 1)
     {
@@ -98,6 +104,24 @@ volVectorField U
     mesh
 );
 
+// Acceleration field
+// Implemented to address ANS reviewer comment
+// To be removed
+/*volVectorField U_old = U;
+
+volVectorField a
+(
+    IOobject
+    (
+        "a",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    (U - U_old) / runTime.deltaT()
+);*/
+
 PtrList<volScalarField> rho_m(materials);
 forAll(rho_m, mI)
 {
@@ -132,6 +156,32 @@ volScalarField rho
     alpha_m[0]*rho_m[0]*0.0
 );
 
+volScalarField nu
+(
+    IOobject
+    (
+        "nu",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    alpha_m[0]*nu_m[0]
+);
+
+nu *= 0.0;
+for (int mI=0; mI<materials; mI++) 
+{
+    nu += alpha_m[0]*nu_m[0];
+}
+nu.correctBoundaryConditions();
+
+bool inviscid = true;
+if (max(nu).value() > 0.0)
+{
+    inviscid = false;
+}
+
 volScalarField powDens
 (
     IOobject
@@ -151,6 +201,19 @@ volScalarField cavitated
     IOobject
     (
         "cavitated",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    alpha_m[0]*rho_m[0]*0.0
+);
+
+volScalarField boiled
+(
+    IOobject
+    (
+        "boiled",
         runTime.timeName(),
         mesh,
         IOobject::READ_IF_PRESENT,
@@ -498,6 +561,20 @@ surfaceScalarField phi("phi", fvc::flux(rhoU));
 
 scalar eulRel = runTime.controlDict().lookupOrDefault<scalar>("eulRel", 0);
 scalar externalCycles = runTime.controlDict().lookupOrDefault<scalar>("externalCycles", 1);
+
+volScalarField hllc_frac
+(
+    IOobject
+    (
+        "hllc_frac",
+        runTime.timeName(),
+        mesh,
+        IOobject::READ_IF_PRESENT,
+        IOobject::AUTO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("hllc_frac", dimless, 1.0)
+);
 
 
 volScalarField eulerian

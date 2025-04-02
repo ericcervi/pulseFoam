@@ -47,6 +47,7 @@ Description
 #include "pointMesh.C"
 #include "turbulentFluidThermoModel.H"
 #include "directionInterpolate.H"
+#include "fluxSchemes/evalHLL.H"
 #include "fluxSchemes/evalHLLC.H"
 #include "localEulerDdtScheme.H"
 #include "fvcSmooth.H"
@@ -70,12 +71,14 @@ int main(int argc, char *argv[])
     #include "createTime.H"
     #include "createDynamicFvMesh.H"
     #include "createFields.H"
+
     #include "createTimeControls.H"
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
     #include "readFluxScheme.H"
     #include "createFields/createCommonFields.H"
+    #include "multiMaterialSystem/updatePressure.H"
     const dimensionedScalar v_zero(dimVolume/dimTime, Zero);
     #include "createFields/createCentralFields.H"
     #include "createFields/createHLLCFields.H"
@@ -101,7 +104,7 @@ int main(int argc, char *argv[])
         }
 
         #include "multiMaterialSystem/updateMultiMatProperties.H"
- 
+
         // --- Directed interpolation of primitive fields onto faces
         #include "updateFields/updateCommonFields.H"
 
@@ -122,7 +125,7 @@ int main(int argc, char *argv[])
             #include "updateFields/updateCentralFields.H"
         }
 
-        if (fluxScheme == "HLLC")
+        if ((fluxScheme == "HLLC") || (fluxScheme == "HLL") || (fluxScheme == "Blended"))
         {  
             #include "updateFields/updateHLLCFields.H"
         }
@@ -148,7 +151,7 @@ int main(int argc, char *argv[])
         }
 
         // --- Update HLLC "star-region" quantities (after mesh motion)
-        if (fluxScheme == "HLLC")
+        if ((fluxScheme == "HLLC") || (fluxScheme == "HLL") || (fluxScheme == "Blended"))
         {  
             #include "updateFields/updateHLLCStarFields.H"
         }
@@ -180,6 +183,16 @@ int main(int argc, char *argv[])
                 #include "fluxSchemes/HLLCFlux.H"
             }
 
+            if (fluxScheme == "HLL")
+            {
+                #include "fluxSchemes/HLLFlux.H"
+            }
+
+            if (fluxScheme == "Blended")
+            {
+                #include "fluxSchemes/BlendedFlux.H"
+            }
+
             // Make flux for pressure-work absolute
             if (eulRel < 1.0)
             {
@@ -187,6 +200,9 @@ int main(int argc, char *argv[])
                 meshPhi.setOriented(false);
                 phiEp += meshPhi*(a_pos*p_pos + a_neg*p_neg);
             }
+
+            volScalarField muEff("muEff", rho*nu);
+            volTensorField tauMC("tauMC", muEff*dev2(Foam::T(fvc::grad(U))));
 
             // --- Solve material fraction
             #include "continuumMechanics/solvePhaseFractions.H"
@@ -214,6 +230,17 @@ int main(int argc, char *argv[])
         {
     	    initialPoints = newPoints;
         }
+
+        // Calculate acceleration
+        // Implemented to address ANS reviewer comment
+        // To be removed
+        /*a *= 0.0;
+        forAll(a,cellI)
+        {
+            if (alpha_m[1][cellI]>=0.001)
+                a[cellI] = (U[cellI] - U_old[cellI]) / runTime.deltaT().value();
+        }
+        U_old = U;*/
 
         Info << nl << "Mass = " << fvc::domainIntegrate(rho).value() << " kg" << endl;
         Info << nl << "Internal energy = " << fvc::domainIntegrate(rho*Cv*T + 0.5*rho*(U&U)).value() << " J" << endl;
