@@ -8,12 +8,12 @@ namespace Foam
             void_corr = 0.0;
         }
 
-        alphaPhiv_m = V_dir * magSf * alpha_dir_m * void_corr;
+        alphaPhiv_m = V_dir * magSf * alpha_dir_m;
         phi_m = rho_dir_m * V_dir * magSf * void_corr;
             
         if (mI==0)
         {       
-            phiv = V_dir * magSf * void_corr;
+            phiv = V_dir * magSf;
             phi = rho_dir * phiv * void_corr;
 
             phiUp = (phi * U_dir + p_dir * Sf) * void_corr;
@@ -30,12 +30,12 @@ namespace Foam
         }
 
         scalar f = (S_dir - V_dir) / (S_dir - SStar);
-        alphaPhiv_m = SStar * f * magSf * alpha_dir_m * void_corr;
+        alphaPhiv_m = SStar * f * magSf * alpha_dir_m;
         phi_m = rho_dir_m * SStar * f * magSf * void_corr;
 
         if (mI==0)
         {
-            phiv = SStar * f * magSf * void_corr;
+            phiv = SStar * f * magSf;
             phi = rho_dir * phiv * void_corr;
 
             vector rhoUStar = f * rho_dir * (U_dir - (V_dir - SStar) * normal) * magSf;

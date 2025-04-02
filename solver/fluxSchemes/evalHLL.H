@@ -14,9 +14,9 @@ namespace Foam
         }
 
         alphaPhiv_m = (  
-                  S_neg * alpha_pos_m * (V_pos * magSf) * void_corr_neg
-                - S_pos * alpha_neg_m * (V_neg * magSf) * void_corr_pos
-                + S_pos * S_neg * (alpha_neg_m * void_corr_neg - alpha_pos_m * void_corr_pos) * magSf
+                  S_neg * alpha_pos_m * (V_pos * magSf)
+                - S_pos * alpha_neg_m * (V_neg * magSf)
+                + S_pos * S_neg * (alpha_neg_m - alpha_pos_m) * magSf
                 ) / (S_neg - S_pos);
                 
         phi_m = (  
@@ -28,8 +28,8 @@ namespace Foam
         if (mI==0)
         {
             phiv = (  
-                     S_neg * (V_pos * magSf) * void_corr_neg
-                    - S_pos * (V_neg * magSf) * void_corr_pos
+                     S_neg * (V_pos * magSf)
+                    - S_pos * (V_neg * magSf)
                    ) / (S_neg - S_pos);
 
             phi = (  

@@ -15,7 +15,7 @@
             psi += alpha_m[mI] * psi_m[mI];
             B0 += alpha_m[mI] * (rho0_m[mI] - beta_m[mI] * (T - T0) - psi_m[mI] * p0);
 
-            if (boiling = true)
+            if (boiling)
             {
                 forAll(rho, cellI)
                 {
