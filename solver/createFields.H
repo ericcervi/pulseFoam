@@ -26,11 +26,13 @@ std::vector<dimensionedScalar> Cp_m{};
 std::vector<dimensionedScalar> rho0_m{};
 std::vector<dimensionedScalar> nu_m{};
 
+// multi-material simulation control options
 scalar void_limit = materialProperties.lookupOrDefault<scalar>("void_limit", -1.0);
 scalar p_cavitation = materialProperties.lookupOrDefault<scalar>("p_cavitation", -1.0e30);
+int cavitating_id = materialProperties.lookupOrDefault<int>("cavitating_id", 1000);
 bool boiling = materialProperties.lookupOrDefault<bool>("boiling", false);
-int cavitating_id = materialProperties.lookupOrDefault<scalar>("cavitating_id", 1000);
 
+// multi-material properties
 for (int mI=0; mI<materials; mI++) 
 {
     scalar EOS_value = materialProperties.lookupOrDefault<scalar>("EOS_m" + Foam::name(mI), 0.0);
@@ -39,7 +41,9 @@ for (int mI=0; mI<materials; mI++)
     dimensionedScalar R_value(materialProperties.lookup("R_m" + Foam::name(mI)));
     R_m.push_back(R_value);
 
-    dimensionedScalar nu_value(materialProperties.lookup("nu_m" + Foam::name(mI), 0.0));
+    dimensionedScalar nu_value(materialProperties.lookupOrDefault<dimensionedScalar>(
+        "nu_m" + Foam::name(mI), dimensionedScalar("nu_value", dimensionSet(0, 2, -1, 0, 0, 0, 0), 0.0)
+    ));
     nu_m.push_back(nu_value);
 
     if (EOS_value == 1)

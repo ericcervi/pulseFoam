@@ -105,6 +105,12 @@ int main(int argc, char *argv[])
 
         #include "multiMaterialSystem/updateMultiMatProperties.H"
 
+        // --- Pressure pre-update can improve stability with boiling
+        if (boiling)
+        {
+            #include "multiMaterialSystem/updatePressure.H"
+        }
+
         // --- Directed interpolation of primitive fields onto faces
         #include "updateFields/updateCommonFields.H"
 

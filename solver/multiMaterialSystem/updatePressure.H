@@ -19,9 +19,9 @@
             {
                 forAll(rho, cellI)
                 {
-                    if ((p[cellI] > 0.99 * p_cavitation) && (alpha_m[mI][cellI] > 0.01))
+                    if ((p[cellI] > 0.99 * p_cavitation) && (alpha_m[mI][cellI] > 1e-2))
                     {
-                        if (T[cellI] > 11026.208 / (9.424 - std::log10(std::max(p[cellI] / 133.32, 10.0))))
+                        if (T[cellI] > 11026.208 / (9.424 - std::log10(std::max(p[cellI] / 133.32, 1e-3))))
                         {
                             psi[cellI] += alpha_m[mI][cellI] * ( 1.0 / R_m[mI].value() / T[cellI] - psi_m[mI].value());
                             B0[cellI] -= alpha_m[mI][cellI] * (rho0_m[mI].value() - beta_m[mI].value() * (T[cellI] - T0.value()) - psi_m[mI].value() * p0.value());                    
