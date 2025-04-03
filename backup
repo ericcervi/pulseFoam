@@ -1,0 +1,459 @@
+/*---------------------------------------------------------------------------*\
+  =========                 |#include "volPointInterpolation.H"
+#include "primitivePatchInterpolation.H"
+#include "dynamicFvMesh.H"
+#include "pointMesh.C"
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     |
+    \\  /    A nd           | www.openfoam.com
+     \\/     M anipulation  |
+-------------------------------------------------------------------------------
+    Copyright (C) 2011-2016 OpenFOAM Foundation
+    Copyright (C) 2021 OpenCFD Ltd.
+-------------------------------------------------------------------------------
+License
+    This file is part of OpenFOAM.
+
+    OpenFOAM is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpenFOAM is distributed in the hope that it will be useful, but WITHOUT
+    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+    FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+    for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with OpenFOAM.  If not, see <http://www.gnu.org/licenses/>.
+
+Application
+    rhoCentralFoam
+
+Group
+    grpCompressibleSolvers
+
+Description
+    Density-based compressible flow solver based on
+    central-upwind schemes of Kurganov and Tadmor with
+    support for mesh-motion and topology changes.
+
+\*---------------------------------------------------------------------------*/
+
+#include "fvCFD.H"
+#include "volPointInterpolation.H"
+#include "primitivePatchInterpolation.H"
+#include "dynamicFvMesh.H"
+#include "pointMesh.C"
+#include "turbulentFluidThermoModel.H"
+#include "fixedRhoFvPatchScalarField.H"
+#include "directionInterpolate.H"
+#include "localEulerDdtScheme.H"
+#include "fvcSmooth.H"
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+int main(int argc, char *argv[])
+{
+    argList::addNote
+    (
+        "Density-based compressible flow solver based on"
+        " central-upwind schemes of Kurganov and Tadmor with"
+        " support for mesh-motion and topology changes."
+    );
+
+    #define NO_CONTROL
+    #include "postProcess.H"
+
+    #include "addCheckCaseOptions.H"
+    #include "setRootCaseLists.H"
+    #include "createTime.H"
+    #include "createDynamicFvMesh.H"
+    #include "createFields.H"
+    #include "createTimeControls.H"
+
+    // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+    #include "readFluxScheme.H"
+
+    const dimensionedScalar v_zero(dimVolume/dimTime, Zero);
+
+    // Courant numbers used to adjust the time-step
+    scalar CoNum = 0.0;
+    scalar meanCoNum = 0.0;
+
+    Info<< "\nStarting time loop\n" << endl;
+
+    while (runTime.run())
+    {
+        #include "readTimeControls.H"
+
+        if (!LTS)
+        {
+            #include "setDeltaT.H"
+
+            ++runTime;
+
+            // Do any mesh changes
+            mesh.update();
+        }
+
+        // --- Directed interpolation of primitive fields onto faces
+
+        for (int mI=0; mI<materials; mI++) 
+        {
+            if (materials > 1)
+            {
+                alpha_pos_m[mI] = interpolate(alpha_m[mI], pos, rho.name());
+                alpha_neg_m[mI] = interpolate(alpha_m[mI], neg, rho.name());
+            }
+
+            rho_pos_m[mI] = interpolate(rho_m[mI], pos, rho.name());
+            rho_neg_m[mI] = interpolate(rho_m[mI], neg, rho.name());
+        }
+
+        surfaceScalarField rho_pos(interpolate(rho, pos));
+        surfaceScalarField rho_neg(interpolate(rho, neg));
+        
+        surfaceVectorField rhoU_pos(interpolate(rhoU, pos, U.name()));
+        surfaceVectorField rhoU_neg(interpolate(rhoU, neg, U.name()));
+
+        volScalarField rPsi("rPsi", 1.0/psi);
+        surfaceScalarField rPsi_pos(interpolate(rPsi, pos, T.name()));
+        surfaceScalarField rPsi_neg(interpolate(rPsi, neg, T.name()));
+
+        surfaceScalarField B0_pos(interpolate(B0, pos, rho.name()));
+        surfaceScalarField B0_neg(interpolate(B0, neg, rho.name()));
+
+        surfaceScalarField e_pos(interpolate(e, pos, T.name()));
+        surfaceScalarField e_neg(interpolate(e, neg, T.name()));
+
+        surfaceVectorField U_pos("U_pos", rhoU_pos/rho_pos);
+        surfaceVectorField U_neg("U_neg", rhoU_neg/rho_neg);
+
+        surfaceScalarField p_pos("p_pos", (rho_pos - B0_pos) * rPsi_pos);
+        surfaceScalarField p_neg("p_neg", (rho_neg - B0_neg) * rPsi_neg);
+
+        surfaceScalarField phiv_pos("phiv_pos", U_pos & mesh.Sf());
+        phiv_pos.setOriented(false);
+        surfaceScalarField phiv_neg("phiv_neg", U_neg & mesh.Sf());
+        phiv_neg.setOriented(false);
+
+        // Make fluxes relative to mesh-motion
+        if (eulRel < 1.0)
+        {
+            surfaceScalarField meshPhi = fvc::interpolate(W) & mesh.Sf();
+            meshPhi.setOriented(false);
+            phiv_pos -= meshPhi;
+            phiv_neg -= meshPhi;
+        }
+
+        volScalarField c("c", sqrt(gamma*rPsi));
+        
+        surfaceScalarField cSf_pos
+        (
+            "cSf_pos",
+            interpolate(c, pos, T.name())*mesh.magSf()
+        );
+
+        surfaceScalarField cSf_neg
+        (
+            "cSf_neg",
+            interpolate(c, neg, T.name())*mesh.magSf()
+        );
+
+        surfaceScalarField ap
+        (
+            "ap",
+            max(max(phiv_pos + cSf_pos, phiv_neg + cSf_neg), v_zero)
+        );
+
+        surfaceScalarField am
+        (
+            "am",
+            min(min(phiv_pos - cSf_pos, phiv_neg - cSf_neg), v_zero)
+        );
+
+        surfaceScalarField a_pos("a_pos", ap/(ap - am));
+
+        surfaceScalarField amaxSf("amaxSf", max(mag(am), mag(ap)));
+
+        surfaceScalarField aSf("aSf", am*a_pos);
+
+        if (fluxScheme == "Tadmor")
+        {
+            aSf = -0.5*amaxSf;
+            a_pos = 0.5;
+        }
+
+        surfaceScalarField a_neg("a_neg", 1.0 - a_pos);
+
+        phiv_pos *= a_pos;
+        phiv_neg *= a_neg;
+
+        surfaceScalarField aphiv_pos("aphiv_pos", phiv_pos - aSf);
+        surfaceScalarField aphiv_neg("aphiv_neg", phiv_neg + aSf);
+
+        amaxSf = max(mag(aphiv_pos), mag(aphiv_neg));
+
+        surfaceScalarField c_pos
+        (
+            "c_pos",
+            interpolate(c, pos, T.name())
+        );
+
+        surfaceScalarField c_neg
+        (
+            "c_neg",
+            interpolate(c, neg, T.name())
+        );
+
+        if (fluxScheme == "HLLC")
+        {
+            a_pos = sqrt(rho_pos)/(sqrt(rho_pos) + sqrt(rho_neg));
+            a_neg = 1.0 - a_pos;
+        }
+             
+        if (eulRel < 1.0)
+        {
+         	//#include "eulEqn.H" 
+		    forAll(eulerian,cellI)
+		    {
+                eulerian[cellI]=1.0;
+            }   		
+		    pointInterpolation.interpolate(U, pointU);
+    	    pointInterpolation.interpolate(eulerian, pointE);
+		    pointDisp = pointU*runTime.deltaT();
+		    pointDisp = pointDisp - eulRel*pointDisp*pointE/max(eulerian);
+
+    	    forAll (pointU, pointI)
+    	    {
+    	   	    newPoints[pointI] = initialPoints[pointI] + pointDisp[pointI];
+    	    }
+    		    
+    	    mesh.movePoints(newPoints);	
+        }
+              
+        surfaceScalarField magSf = mesh.magSf();
+        magSf.setOriented(false);
+        surfaceVectorField Sf = mesh.Sf();
+        Sf.setOriented(false);
+        surfaceVectorField normal = Sf/magSf;
+        normal.setOriented(false);
+
+        surfaceScalarField V_pos((U_pos & normal) - (fvc::interpolate(W) & normal));
+        V_pos.setOriented(false);
+        surfaceScalarField V_neg((U_neg & normal) - (fvc::interpolate(W) & normal));
+        V_neg.setOriented(false);
+        
+        surfaceScalarField cTilde(c_pos*a_pos + c_neg*a_neg);
+        surfaceScalarField VTilde(V_pos*a_pos + V_neg*a_neg);
+        
+        surfaceScalarField S_pos(min(V_pos - c_pos, VTilde - cTilde));
+        surfaceScalarField S_neg(max(V_neg + c_neg, VTilde + cTilde));
+    
+        surfaceScalarField SStar =
+        (
+            p_neg - p_pos
+          + rho_pos*V_pos*(S_pos - V_pos)
+          - rho_neg*V_neg*(S_neg - V_neg)
+        )
+       /(rho_pos*(S_pos - V_pos) - rho_neg*(S_neg - V_neg));
+
+    
+        surfaceScalarField pStar_pos(p_pos + rho_pos*(S_pos - V_pos)*(SStar - V_pos));
+        surfaceScalarField pStar_neg(p_neg + rho_neg*(S_neg - V_neg)*(SStar - V_neg));
+
+        #include "centralCourantNo.H"
+
+        if (LTS)
+        {
+            #include "setRDeltaT.H"
+
+            ++runTime;
+        }
+
+        Info<< "Time = " << runTime.timeName() << nl << endl;
+
+		for (int counter=0; counter<externalCycles; counter++) 
+		{            
+            surfaceScalarField phiv("phiv", 0.0 * phiv_pos);
+ 
+            surfaceVectorField phiU("phiU", 0.0 * aphiv_pos * rhoU_pos);
+            phiU.setOriented(true);
+            
+            surfaceVectorField phiUp("phiUp", 0.0 * p_pos * mesh.Sf());
+            phiUp.setOriented(true);
+        
+            surfaceScalarField phiEp("phiEp", 0.0 * phiv_pos * p_pos);
+            phiEp.setOriented(false);
+                    
+            for (int mI=0; mI<materials; mI++) 
+            {
+                if (materials > 1)
+                {
+                    alphaPhiv_m[mI] = aphiv_pos*alpha_pos_m[mI] + aphiv_neg*alpha_neg_m[mI];
+                }
+                phi_m[mI] = aphiv_pos*rho_pos_m[mI] + aphiv_neg*rho_neg_m[mI];
+            }
+
+            if ((fluxScheme == "Kurganov") || (fluxScheme == "Tadmor"))
+            {
+                phiv = aphiv_pos + aphiv_neg;
+
+                if (eulRel<1.0) 
+                {  
+                    surfaceScalarField meshPhi = fvc::interpolate(W) & mesh.Sf();
+                    meshPhi.setOriented(false);       
+                    phiv += meshPhi;
+                }
+        
+                //phi = aphiv_pos*rho_pos + aphiv_neg*rho_neg;
+
+                phiU = aphiv_pos*rhoU_pos + aphiv_neg*rhoU_neg;
+                phiU.setOriented(true);
+
+                phiUp = phiU + (a_pos*p_pos + a_neg*p_neg)*mesh.Sf();
+
+                phiEp =
+                (
+                    "phiEp",
+                    aphiv_pos*(rho_pos*(e_pos + 0.5*magSqr(U_pos)) + p_pos)
+                  + aphiv_neg*(rho_neg*(e_neg + 0.5*magSqr(U_neg)) + p_neg)
+                  + aSf*p_pos - aSf*p_neg
+                );
+            }
+
+            if (fluxScheme == "HLLC")
+            {
+                #include "HLLCFlux.H"
+
+                if (eulRel<1.0) 
+                {  
+                    surfaceScalarField meshPhi = fvc::interpolate(W) & mesh.Sf();
+                    meshPhi.setOriented(false);       
+                    phiv += meshPhi;
+                }
+            }
+
+            // Make flux for pressure-work absolute
+            if (eulRel < 1.0)
+            {
+                surfaceScalarField meshPhi = fvc::interpolate(W) & mesh.Sf();
+                meshPhi.setOriented(false);
+                phiEp += meshPhi*(a_pos*p_pos + a_neg*p_neg);
+            }
+
+            // --- Solve phase fraction
+            if (materials > 1)
+            {
+                for (int mI=0; mI<materials; mI++) 
+                {            
+                    solve(fvm::ddt(alpha_m[mI]) + fvc::div(alphaPhiv_m[mI]) - alpha_m[mI] * fvc::div(phiv));
+                }
+            }
+
+            // --- Solve density
+            for (int mI=0; mI<materials; mI++) 
+            {
+                solve(fvm::ddt(rho_m[mI]) + fvc::div(phi_m[mI]));
+                //solve(fvm::ddt(alpha_m[mI],rho_m[mI]) + fvc::div(phi_m[mI]));
+            }
+
+            rho *= 0.0;
+            Cv *= 0.0;
+            Cp *= 0.0;
+            R *= 0.0;
+            for (int mI=0; mI<materials; mI++) 
+            {
+                rho += alpha_m[mI] * rho_m[mI];
+                Cv += alpha_m[mI] * Cv_m[mI];
+                Cp += alpha_m[mI] * Cp_m[mI];
+                R += alpha_m[mI] * R_m[mI];
+            }
+
+            gamma = Cp/Cv;
+
+            // --- Solve momentum
+            solve(fvm::ddt(rhoU) + fvc::div(phiUp));
+
+            U.ref() = rhoU()/rho();
+            U.correctBoundaryConditions();
+            W = U * (1.0 - eulRel * eulerian / max(eulerian));
+            rhoU.boundaryFieldRef() == rho.boundaryField()*U.boundaryField();
+
+            solve
+            (
+                fvm::ddt(rhoE)
+              + fvc::div(phiEp)
+            );
+
+            e = rhoE/rho - 0.5*magSqr(U);
+            e.correctBoundaryConditions();
+            T = e/Cv;
+            T.correctBoundaryConditions();
+
+            psi *= 0.0;
+            B0 *= 0.0;
+            for (int mI=0; mI<materials; mI++) 
+            {
+                if(EOS_m[mI].value()==0.0)
+                {
+                    psi += alpha_m[mI] / R_m[mI] / T;
+                }
+                if(EOS_m[mI].value()==1.0)
+                {
+                    psi += alpha_m[mI] * psi_m[mI];
+                    B0 += alpha_m[mI] * (rho0_m[mI] - beta_m[mI]*(T - T0) - psi_m[mI]*p0);
+                }
+            }
+            psi.correctBoundaryConditions();
+            B0.correctBoundaryConditions();
+
+            rhoE.boundaryFieldRef() ==
+                rho.boundaryField()*
+                (
+                    e.boundaryField() + 0.5*magSqr(U.boundaryField())
+                );
+
+            p = (rho - B0)/psi;
+            p.correctBoundaryConditions();
+            rho.boundaryFieldRef() == psi.boundaryField()*p.boundaryField() + B0.boundaryField();
+
+            for (int mI=0; mI<materials; mI++) 
+            {
+                if(EOS_m[mI].value()==0.0)
+                {
+                    rho_m[mI].boundaryFieldRef() == p.boundaryField() / R_m[mI].value() / T.boundaryField();
+                }
+                if(EOS_m[mI].value()==1.0)
+                {
+                    rho_m[mI].boundaryFieldRef() == psi_m[mI].value() * p.boundaryField()
+                                                  - psi_m[mI].value() * p0.value()
+                                                  - beta_m[mI].value() * (T.boundaryField() - T0.value())
+                                                  + rho0_m[mI].value();
+                }
+            }
+        }
+
+        if (eulRel < 1.0)
+        {
+    	    initialPoints = newPoints;
+        }
+
+        Info << nl << "Mass = " << fvc::domainIntegrate(rho).value() << " kg" << endl;
+        Info << nl << "Enthalpy = " << fvc::domainIntegrate(rho*Cv*T + p).value() << " kg" << endl;
+        Info << nl << "Total Enthalpy = " << fvc::domainIntegrate(rho*Cv*T + p + 0.5*rho*(U&U)).value() << " kg" << endl;
+        Info << nl << "Internal energy = " << fvc::domainIntegrate(rho*Cv*T + 0.5*rho*(U&U)).value() << " kg" << endl;
+
+        runTime.write();
+
+        runTime.printExecutionTime(Info);
+    }
+
+    Info<< "End\n" << endl;
+
+    return 0;
+}
+
+// ************************************************************************* //
