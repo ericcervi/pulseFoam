@@ -31,6 +31,14 @@ scalar void_limit = materialProperties.lookupOrDefault<scalar>("void_limit", -1.
 scalar p_cavitation = materialProperties.lookupOrDefault<scalar>("p_cavitation", -1.0e30);
 int cavitating_id = materialProperties.lookupOrDefault<int>("cavitating_id", 1000);
 bool boiling = materialProperties.lookupOrDefault<bool>("boiling", false);
+scalar de_evap = materialProperties.lookupOrDefault<scalar>("de_evap", 0.0);
+
+dimensionedScalar eUnit 
+( 
+    "eUnit", 
+    dimensionSet(0,2,-2,0,0,0,0), 
+    1 
+); 
 
 // multi-material properties
 for (int mI=0; mI<materials; mI++) 

@@ -229,24 +229,13 @@ int main(int argc, char *argv[])
             #include "multiMaterialSystem/updatePressure.H"
 
             // --- update density BC
-            #include "multiMaterialSystem/updateRhoBC.H"
+            //#include "multiMaterialSystem/updateRhoBC.H"
         }
 
         if (eulRel < 1.0)
         {
     	    initialPoints = newPoints;
         }
-
-        // Calculate acceleration
-        // Implemented to address ANS reviewer comment
-        // To be removed
-        /*a *= 0.0;
-        forAll(a,cellI)
-        {
-            if (alpha_m[1][cellI]>=0.001)
-                a[cellI] = (U[cellI] - U_old[cellI]) / runTime.deltaT().value();
-        }
-        U_old = U;*/
 
         Info << nl << "Mass = " << fvc::domainIntegrate(rho).value() << " kg" << endl;
         Info << nl << "Internal energy = " << fvc::domainIntegrate(rho*Cv*T + 0.5*rho*(U&U)).value() << " J" << endl;
