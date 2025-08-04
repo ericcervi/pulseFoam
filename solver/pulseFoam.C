@@ -136,17 +136,18 @@ int main(int argc, char *argv[])
             #include "updateFields/updateHLLCFields.H"
         }
 
+        // --- ALE mesh routine
         if (eulRel < 1.0)
         {
-         	//#include "eulEqn.H" 
-		    forAll(eulerian,cellI)
-		    {
+            //#include "eulEqn.H" 
+            forAll(eulerian,cellI)
+            {
                 eulerian[cellI]=1.0;
-            }   		
-		    pointInterpolation.interpolate(U, pointU);
+            }
+            pointInterpolation.interpolate(U, pointU);
     	    pointInterpolation.interpolate(eulerian, pointE);
-		    pointDisp = pointU*runTime.deltaT();
-		    pointDisp = pointDisp - eulRel*pointDisp*pointE/max(eulerian);
+            pointDisp = pointU*runTime.deltaT();
+            pointDisp = pointDisp - eulRel*pointDisp*pointE/max(eulerian);
 
     	    forAll (pointU, pointI)
     	    {
@@ -173,8 +174,8 @@ int main(int argc, char *argv[])
 
         Info<< "Time = " << runTime.timeName() << nl << endl;
 
-		for (int counter=0; counter<externalCycles; counter++) 
-		{            
+        for (int counter=0; counter<externalCycles; counter++) 
+        {            
             // --- Init fluxes       
             #include "createFields/initFluxes.H"
 
