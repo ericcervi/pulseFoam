@@ -1,0 +1,255 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v1912                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      setExprFieldsDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// alpha1
+
+defaultFieldValues
+(
+    //volScalarFieldValue alpha_m0 1
+);
+
+expressions
+(
+    alpha_m0
+    {
+        field       alpha_m0;
+        dimensions  [0 0 0 0 0 0 0];
+
+        constants
+        {
+            centerXM5 -0.4828;
+            centerXM4 -0.3621;
+            centerXM3 -0.2414;
+            centerXM2 -0.1207;
+            centerX1 0;
+            centerX2 0.1207;
+            centerX3 0.2414;
+            centerX4 0.3621;
+            centerX5 0.4828;
+                
+            yLower 0.58;
+            yUpper 0.88;
+
+            // top center
+            halfLower1 0.025;
+            halfUpper1 0.045;
+
+            // top right
+            halfLower2 0.045;  // switched
+            halfUpper2 0.025;  // switched
+
+            halfLower3 0.025;
+            halfUpper3 0.045;
+            
+            halfLower4 0.045;  // switched
+            halfUpper4 0.025;  // switched
+
+            halfLower5 0.025;
+            halfUpper5 0.045;
+            
+            // top left
+            halfLowerM2 0.045;  // switched
+            halfUpperM2 0.025;  // switched
+
+            halfLowerM3 0.025;
+            halfUpperM3 0.045;
+            
+            halfLowerM4 0.045;  // switched
+            halfUpperM4 0.025;  // switched
+
+            halfLowerM5 0.025;
+            halfUpperM5 0.045;
+    
+        }
+
+        fieldMask
+        #{
+            (pos().y() >= -$[constants.yUpper]) && (pos().y() <= $[constants.yUpper])
+        #};
+
+        expression
+        #{
+            (
+                // Original trapezoids (top half)
+                (
+                    (pos().y() >= $[constants.yLower]) && (pos().y() <= $[constants.yUpper]) && (
+                        (pos().x() >= ($[constants.centerX1] - ($[constants.halfLower1] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpper1] - $[constants.halfLower1]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerX1] + ($[constants.halfLower1] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpper1] - $[constants.halfLower1]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= $[constants.yLower]) && (pos().y() <= $[constants.yUpper]) && (
+                        (pos().x() >= ($[constants.centerX2] - ($[constants.halfLower2] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpper2] - $[constants.halfLower2]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerX2] + ($[constants.halfLower2] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpper2] - $[constants.halfLower2]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= $[constants.yLower]) && (pos().y() <= $[constants.yUpper]) && (
+                        (pos().x() >= ($[constants.centerX3] - ($[constants.halfLower3] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpper3] - $[constants.halfLower3]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerX3] + ($[constants.halfLower3] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpper3] - $[constants.halfLower3]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= $[constants.yLower]) && (pos().y() <= $[constants.yUpper]) && (
+                        (pos().x() >= ($[constants.centerX4] - ($[constants.halfLower4] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpper4] - $[constants.halfLower4]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerX4] + ($[constants.halfLower4] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpper4] - $[constants.halfLower4]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= $[constants.yLower]) && (pos().y() <= $[constants.yUpper]) && (
+                        (pos().x() >= ($[constants.centerX5] - ($[constants.halfLower5] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpper5] - $[constants.halfLower5]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerX5] + ($[constants.halfLower5] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpper5] - $[constants.halfLower5]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= $[constants.yLower]) && (pos().y() <= $[constants.yUpper]) && (
+                        (pos().x() >= ($[constants.centerXM2] - ($[constants.halfLowerM2] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpperM2] - $[constants.halfLowerM2]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerXM2] + ($[constants.halfLowerM2] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpperM2] - $[constants.halfLowerM2]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= $[constants.yLower]) && (pos().y() <= $[constants.yUpper]) && (
+                        (pos().x() >= ($[constants.centerXM3] - ($[constants.halfLowerM3] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpperM3] - $[constants.halfLowerM3]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerXM3] + ($[constants.halfLowerM3] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpperM3] - $[constants.halfLowerM3]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= $[constants.yLower]) && (pos().y() <= $[constants.yUpper]) && (
+                        (pos().x() >= ($[constants.centerXM4] - ($[constants.halfLowerM4] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpperM4] - $[constants.halfLowerM4]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerXM4] + ($[constants.halfLowerM4] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpperM4] - $[constants.halfLowerM4]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= $[constants.yLower]) && (pos().y() <= $[constants.yUpper]) && (
+                        (pos().x() >= ($[constants.centerXM5] - ($[constants.halfLowerM5] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpperM5] - $[constants.halfLowerM5]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerXM5] + ($[constants.halfLowerM5] + (pos().y() - $[constants.yLower]) *
+                        (($[constants.halfUpperM5] - $[constants.halfLowerM5]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                // Symmetric trapezoids (bottom half)
+                ||
+                (
+                    (pos().y() >= -$[constants.yUpper]) && (pos().y() <= -$[constants.yLower]) && (
+                        (pos().x() >= ($[constants.centerX1] - ($[constants.halfLower1] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpper1] - $[constants.halfLower1]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerX1] + ($[constants.halfLower1] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpper1] - $[constants.halfLower1]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= -$[constants.yUpper]) && (pos().y() <= -$[constants.yLower]) && (
+                        (pos().x() >= ($[constants.centerX2] - ($[constants.halfLower2] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpper2] - $[constants.halfLower2]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerX2] + ($[constants.halfLower2] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpper2] - $[constants.halfLower2]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= -$[constants.yUpper]) && (pos().y() <= -$[constants.yLower]) && (
+                        (pos().x() >= ($[constants.centerX3] - ($[constants.halfLower3] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpper3] - $[constants.halfLower3]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerX3] + ($[constants.halfLower3] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpper3] - $[constants.halfLower3]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= -$[constants.yUpper]) && (pos().y() <= -$[constants.yLower]) && (
+                        (pos().x() >= ($[constants.centerX4] - ($[constants.halfLower4] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpper4] - $[constants.halfLower4]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerX4] + ($[constants.halfLower4] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpper4] - $[constants.halfLower4]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= -$[constants.yUpper]) && (pos().y() <= -$[constants.yLower]) && (
+                        (pos().x() >= ($[constants.centerX5] - ($[constants.halfLower5] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpper5] - $[constants.halfLower5]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerX5] + ($[constants.halfLower5] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpper5] - $[constants.halfLower5]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= -$[constants.yUpper]) && (pos().y() <= -$[constants.yLower]) && (
+                        (pos().x() >= ($[constants.centerXM2] - ($[constants.halfLowerM2] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpperM2] - $[constants.halfLowerM2]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerXM2] + ($[constants.halfLowerM2] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpperM2] - $[constants.halfLowerM2]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= -$[constants.yUpper]) && (pos().y() <= -$[constants.yLower]) && (
+                        (pos().x() >= ($[constants.centerXM3] - ($[constants.halfLowerM3] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpperM3] - $[constants.halfLowerM3]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerXM3] + ($[constants.halfLowerM3] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpperM3] - $[constants.halfLowerM3]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= -$[constants.yUpper]) && (pos().y() <= -$[constants.yLower]) && (
+                        (pos().x() >= ($[constants.centerXM4] - ($[constants.halfLowerM4] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpperM4] - $[constants.halfLowerM4]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerXM4] + ($[constants.halfLowerM4] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpperM4] - $[constants.halfLowerM4]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+                ||
+                (
+                    (pos().y() >= -$[constants.yUpper]) && (pos().y() <= -$[constants.yLower]) && (
+                        (pos().x() >= ($[constants.centerXM5] - ($[constants.halfLowerM5] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpperM5] - $[constants.halfLowerM5]) / ($[constants.yUpper] - $[constants.yLower]))))) &&
+                        (pos().x() <= ($[constants.centerXM5] + ($[constants.halfLowerM5] + ((-pos().y()) - $[constants.yLower]) *
+                        (($[constants.halfUpperM5] - $[constants.halfLowerM5]) / ($[constants.yUpper] - $[constants.yLower])))))
+                    )
+                )
+            )
+            ? 0.0 : 1.0
+        #};
+    }
+);
+
+
+// ************************************************************************* //
